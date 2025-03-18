@@ -17,7 +17,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Matrix Consierge",
+  title: "RAMS ",
   description: "A dependency matrix management tool",
 };
 
