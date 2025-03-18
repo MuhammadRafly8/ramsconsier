@@ -38,9 +38,55 @@ export default function LoginPage() {
     
     // Test credentials for frontend testing
     if (formData.username === "admin" && formData.password === "admin123") {
-      // Mock successful login for testing
+      // Mock successful admin login for testing
       localStorage.setItem("token", "test-token-for-frontend-development");
-      toast.success("Login successful!");
+      localStorage.setItem("userRole", "admin");
+      localStorage.setItem("userId", "admin_user");
+      toast.success("Login successful as Admin!");
+      router.push("/matrix");
+      return;
+    } else if (formData.username === "user" && formData.password === "user123") {
+      // Mock successful user login for testing
+      localStorage.setItem("token", "test-token-for-frontend-development");
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("userId", formData.username);
+      toast.success("Login successful as User!");
+      router.push("/matrix");
+      return;
+    } 
+    // Sample user 1
+    else if (formData.username === "john" && formData.password === "john123") {
+      localStorage.setItem("token", "test-token-for-frontend-development");
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("userId", "john");
+      toast.success("Login successful as John!");
+      router.push("/matrix");
+      return;
+    }
+    // Sample user 2
+    else if (formData.username === "sarah" && formData.password === "sarah123") {
+      localStorage.setItem("token", "test-token-for-frontend-development");
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("userId", "sarah");
+      toast.success("Login successful as Sarah!");
+      router.push("/matrix");
+      return;
+    }
+    // Sample user 3
+    else if (formData.username === "mike" && formData.password === "mike123") {
+      localStorage.setItem("token", "test-token-for-frontend-development");
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("userId", "mike");
+      toast.success("Login successful as Mike!");
+      router.push("/matrix");
+      return;
+    }
+    // Sample user 4
+    else if (formData.username === "emma" && formData.password === "emma123") {
+      localStorage.setItem("token", "test-token-for-frontend-development");
+      localStorage.setItem("userRole", "user");
+      localStorage.setItem("userId", "emma");
+      toast.success("Login successful as Emma!");
       router.push("/matrix");
       return;
     }
@@ -56,8 +102,9 @@ export default function LoginPage() {
       );
       
       if (response.data.token) {
-        // Save token to localStorage
+        // Save token and role to localStorage
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("userRole", response.data.role || "user");
         
         // Redirect to dashboard
         toast.success("Login successful!");
