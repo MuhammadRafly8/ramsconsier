@@ -31,6 +31,12 @@ const MatrixTable = () => {
   // Tambahkan state untuk melacak perubahan yang belum disimpan
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<unknown[]>([]);
+  
+  // Tambahkan state untuk mengelola penambahan sub-atribut baru
+  const [newSubAttribute, setNewSubAttribute] = useState("");
+  const [newSubAttributeCategory, setNewSubAttributeCategory] = useState("Technical/Ops");
+  const [newSubAttributeId, setNewSubAttributeId] = useState<number | null>(null);
+  const [showAddSubAttributeForm, setShowAddSubAttributeForm] = useState(false);
 
   useEffect(() => {
     // For demo purposes, we'll use hardcoded data to match the image
@@ -406,6 +412,134 @@ const MatrixTable = () => {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
+      {isAdmin() && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <h3 className="text-lg font-medium mb-2 md:mb-0">Matrix Management</h3>
+            
+            {!showAddSubAttributeForm ? (
+              <button 
+                onClick={() => setShowAddSubAttributeForm(true)}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+              >
+                Add New Sub-Attribute
+              </button>
+            ) : (
+              <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 mt-2 md:mt-0">
+                <select
+                  value={newSubAttributeCategory}
+                  onChange={(e) => setNewSubAttributeCategory(e.target.value)}
+                  className="p-1.5 border border-gray-300 rounded text-sm"
+                >
+                  <option value="Technical/Ops">Technical/Ops</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Economy">Economy</option>
+                  <option value="other">Other</option>
+                </select>
+                <input
+                  type="text"
+                  value={newSubAttribute}
+                  onChange={(e) => setNewSubAttribute(e.target.value)}
+                  placeholder="Enter new sub-attribute name"
+                  className="p-1.5 border border-gray-300 rounded text-sm flex-grow"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="ID (opsional)"
+                  className="p-1.5 border border-gray-300 rounded text-sm w-24"
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value > 0) {
+                      setNewSubAttributeId(value);
+                    } else {
+                      setNewSubAttributeId(null);
+                    }
+                  }}
+                />
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      if (!matrix) return;
+                      
+                      // Tentukan ID baru
+                      let newId;
+                      if (newSubAttributeId) {
+                        // Gunakan ID yang dimasukkan pengguna
+                        newId = newSubAttributeId;
+                      } else {
+                        // Gunakan ID tertinggi + 1 (default)
+                        newId = Math.max(...matrix.rows.map(row => row.id)) + 1;
+                      }
+                      
+                      // Periksa apakah ID sudah ada
+                      const idExists = matrix.rows.some(row => row.id === newId);
+                      if (idExists) {
+                        toast.error(`ID ${newId} sudah digunakan. Silakan pilih ID lain.`);
+                        return;
+                      }
+                      
+                      const newRow = {
+                        id: newId,
+                        name: newSubAttribute,
+                        category: newSubAttributeCategory
+                      };
+                      
+                      // Update matrix with new row
+                      setMatrix(prev => {
+                        if (!prev) return prev;
+                        
+                        // Tambahkan row dan column baru
+                        const updatedRows = [...prev.rows, newRow];
+                        const updatedColumns = [...prev.columns, { id: newId, name: newId.toString() }];
+                        
+                        // Urutkan rows dan columns berdasarkan ID
+                        updatedRows.sort((a, b) => a.id - b.id);
+                        updatedColumns.sort((a, b) => a.id - b.id);
+                        
+                        const newMatrix = {
+                          ...prev,
+                          rows: updatedRows,
+                          columns: updatedColumns
+                        };
+                        
+                        // Recalculate totals
+                        calculateTotals(newMatrix);
+                        
+                        // Set unsaved changes
+                        setHasUnsavedChanges(true);
+                        
+                        return newMatrix;
+                      });
+                      
+                      // Reset form
+                      setNewSubAttribute('');
+                      setNewSubAttributeId(null);
+                      setShowAddSubAttributeForm(false);
+                      
+                      toast.success(`Sub-atribut baru berhasil ditambahkan dengan ID: ${newId}`);
+                    }}
+                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                    disabled={!newSubAttribute.trim()}
+                  >
+                    Add
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowAddSubAttributeForm(false);
+                      setNewSubAttribute("");
+                    }}
+                    className="px-3 py-1.5 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="min-w-full inline-block align-middle">
         <div className="overflow-hidden md:rounded-lg shadow">
           <table className="min-w-full border-collapse border border-gray-300">
@@ -421,6 +555,9 @@ const MatrixTable = () => {
                 ))}
                 <th className="border border-gray-300 p-1 bg-gray-100 text-center text-xs md:text-sm">Relation to</th>
                 <th className="border border-gray-300 p-1 bg-gray-100 text-center text-xs md:text-sm">Sub Total</th>
+                {isAdmin() && (
+                  <th className="border border-gray-300 p-1 bg-gray-100 text-center text-xs md:text-sm">Action</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -479,6 +616,53 @@ const MatrixTable = () => {
                           {categoryTotals[category] || 0}
                         </td>
                       ) : null}
+                      
+                      {/* Tambahkan kolom Action untuk admin */}
+                      {isAdmin() && (
+                        <td className="border border-gray-300 p-1 text-center">
+                          <button
+                            onClick={() => {
+                              if (confirm(`Apakah Anda yakin ingin menghapus sub-atribut "${row.name}"?`)) {
+                                if (!matrix) return;
+                                
+                                // Hapus row
+                                const updatedRows = matrix.rows.filter(r => r.id !== row.id);
+                                
+                                // Hapus column
+                                const updatedColumns = matrix.columns.filter(c => c.id !== row.id);
+                                
+                                // Hapus dependencies yang terkait
+                                const updatedDependencies = { ...matrix.dependencies };
+                                Object.keys(updatedDependencies).forEach(key => {
+                                  const [r, c] = key.split('_').map(Number);
+                                  if (r === row.id || c === row.id) {
+                                    delete updatedDependencies[key];
+                                  }
+                                });
+                                
+                                // Update matrix
+                                const newMatrix = {
+                                  ...matrix,
+                                  rows: updatedRows,
+                                  columns: updatedColumns,
+                                  dependencies: updatedDependencies
+                                };
+                                
+                                // Update state
+                                setMatrix(newMatrix);
+                                calculateTotals(newMatrix);
+                                setHasUnsavedChanges(true);
+                                
+                                toast.success(`Sub-atribut "${row.name}" berhasil dihapus`);
+                              }
+                            }}
+                            className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                            title="Hapus sub-atribut ini"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      )}
                     </tr>
                 ))}
               </Fragment>
