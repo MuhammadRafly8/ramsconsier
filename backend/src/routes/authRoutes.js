@@ -1,8 +1,8 @@
-import { Router } from 'express';
+const { Router } = require('express');
 const router = Router();
-import { register, login, getCurrentUser } from '../controllers/authController';
-import { authenticate } from '../middleware/authMiddleware';
-import { body } from 'express-validator';
+const { register, login, getCurrentUser } = require('../controllers/authController');
+const { authenticate } = require('../middleware/authMiddleware');
+const { body } = require('express-validator');
 
 // Register validation
 const registerValidation = [
@@ -38,4 +38,4 @@ router.post('/login', loginValidation, login);
 // Get current user route (protected)
 router.get('/me', authenticate, getCurrentUser);
 
-export default router;
+module.exports = router;

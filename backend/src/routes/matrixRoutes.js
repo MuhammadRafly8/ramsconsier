@@ -1,7 +1,7 @@
-import { Router } from 'express';
+const { Router } = require('express');
 const router = Router();
-import { getAllMatrices, getUserMatrices, getMatrixById, createMatrix, updateMatrix, deleteMatrix } from '../controllers/matrixController';
-import { authenticate, isAdmin } from '../middleware/authMiddleware';
+const { getAllMatrices, getUserMatrices, getMatrixById, createMatrix, updateMatrix, deleteMatrix } = require('../controllers/matrixController');
+const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 
 // Apply auth middleware to all routes
 router.use(authenticate);
@@ -57,4 +57,4 @@ router.post('/:id/verify', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

@@ -1,7 +1,7 @@
 'use strict';
-import { Model } from 'sequelize';
+const { Model } = require('sequelize');
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   class Matrix extends Model {
     static associate(models) {
       // define association here
@@ -39,7 +39,7 @@ export default (sequelize, DataTypes) => {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'Users',
+        model: 'users', // Changed from 'Users' to 'users' to match the User model's tableName
         key: 'id'
       }
     },

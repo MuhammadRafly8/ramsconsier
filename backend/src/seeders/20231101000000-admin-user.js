@@ -1,21 +1,24 @@
 'use strict';
-import { genSalt, hash } from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
+const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
 
-export async function up(queryInterface, Sequelize) {
-  const salt = await genSalt(10);
-  const hashedPassword = await hash('admin123', salt);
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash('admin123', salt);
 
-  return queryInterface.bulkInsert('users', [{
-    id: uuidv4(),
-    username: 'admin',
-    password: hashedPassword,
-    email: 'admin@example.com',
-    role: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }]);
-}
-export async function down(queryInterface, Sequelize) {
-  return queryInterface.bulkDelete('users', { username: 'admin' }, {});
-}
+    return queryInterface.bulkInsert('users', [{
+      id: uuidv4(),
+      username: 'admin',
+      password: hashedPassword,
+      email: 'admin@example.com',
+      role: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }]);
+  },
+
+  async down(queryInterface, Sequelize) {
+    return queryInterface.bulkDelete('users', { username: 'admin' }, {});
+  }
+};

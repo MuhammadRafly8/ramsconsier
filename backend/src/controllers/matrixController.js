@@ -1,8 +1,8 @@
-import { Matrix, User } from '../models';
-import { Op } from 'sequelize';
+const { Matrix, User } = require('../models');
+const { Op } = require('sequelize');
 
 // Get all matrices (admin only)
-export async function getAllMatrices(req, res) {
+async function getAllMatrices(req, res) {
   try {
     const matrices = await Matrix.findAll({
       include: [
@@ -22,7 +22,7 @@ export async function getAllMatrices(req, res) {
 }
 
 // Get matrices created by user or shared with user
-export async function getUserMatrices(req, res) {
+async function getUserMatrices(req, res) {
   try {
     const userId = req.user.id;
     
@@ -50,7 +50,7 @@ export async function getUserMatrices(req, res) {
 }
 
 // Get matrix by ID
-export async function getMatrixById(req, res) {
+async function getMatrixById(req, res) {
   try {
     const { id } = req.params;
     
@@ -76,7 +76,7 @@ export async function getMatrixById(req, res) {
 }
 
 // Create new matrix
-export async function createMatrix(req, res) {
+async function createMatrix(req, res) {
   try {
     const { title, description, keyword, data } = req.body;
     const userId = req.user.id;
@@ -101,7 +101,7 @@ export async function createMatrix(req, res) {
 }
 
 // Update matrix
-export async function updateMatrix(req, res) {
+async function updateMatrix(req, res) {
   try {
     const { id } = req.params;
     const { title, description, keyword, data, sharedWith } = req.body;
@@ -134,7 +134,7 @@ export async function updateMatrix(req, res) {
 }
 
 // Delete matrix
-export async function deleteMatrix(req, res) {
+async function deleteMatrix(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -158,3 +158,12 @@ export async function deleteMatrix(req, res) {
     return res.status(500).json({ error: 'Failed to delete matrix' });
   }
 }
+
+module.exports = {
+  getAllMatrices,
+  getUserMatrices,
+  getMatrixById,
+  createMatrix,
+  updateMatrix,
+  deleteMatrix
+};
