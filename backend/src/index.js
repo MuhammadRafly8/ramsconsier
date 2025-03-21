@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { sequelize } = require('./models').default;
-const matrixRoutes = require('./routes/matrixRoutes').default;
-const authRoutes = require('./routes/authRoutes').default;
+const { sequelize } = require('./models');
+const matrixRoutes = require('./routes/matrixRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/matrix', matrixRoutes);
 
-//global error handling middleware
+// Global error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -35,12 +35,6 @@ app.use((err, req, res, next) => {
 // Health check route
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
 });
 
 // Start server
