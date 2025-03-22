@@ -159,11 +159,71 @@ async function deleteMatrix(req, res) {
   }
 }
 
+// Add this function to your matrixController.js file
+
+// Verify matrix access with keyword
+async function verifyMatrixAccess(req, res) {
+  try {
+    const { id } = req.params;
+    const { keyword } = req.body;
+    
+    if (!keyword) {
+      return res.status(400).json({ error: 'Keyword is required' });
+    }
+    
+    // Find the matrix
+    const matrix = await Matrix.findByPk(id);
+    
+    if (!matrix) {
+      return res.status(404).json({ error: 'Matrix not found' });
+    }
+    
+    // Check if the keyword matches
+    const isAuthorized = matrix.keyword === keyword;
+    
+    if (isAuthorized) {
+      // If user is authenticated, add this matrix to their authorized matrices
+      if (req.user) {
+        // Check if user already has access
+        const userAccess = await MatrixAccess.findOne({
+          where: {
+            userId: req.user.id,
+            matrixId: id
+          }
+        });
+        
+        // If not, create access record
+        if (!userAccess) {
+          await MatrixAccess.create({
+            userId: req.user.id,
+            matrixId: id
+          });
+        }
+      }
+      
+      return res.status(200).json({ 
+        authorized: true,
+        message: 'Access granted'
+      });
+    }
+    
+    return res.status(200).json({ 
+      authorized: false,
+      message: 'Invalid keyword'
+    });
+  } catch (error) {
+    console.error('Error verifying matrix access:', error);
+    return res.status(500).json({ error: 'Failed to verify access' });
+  }
+}
+
+// Make sure to export the function
 module.exports = {
   getAllMatrices,
   getUserMatrices,
   getMatrixById,
   createMatrix,
   updateMatrix,
-  deleteMatrix
+  deleteMatrix,
+  verifyMatrixAccess  // Add this line to export the new function
 };

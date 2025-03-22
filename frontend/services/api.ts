@@ -90,8 +90,14 @@ export const matrixService = {
     return response.data;
   },
   
+  // Update the verifyMatrixAccess function
   verifyMatrixAccess: async (id: string, keyword: string) => {
-    const response = await axios.post(`${API_URL}/api/matrix/${id}/verify`, { keyword });
-    return response.data;
+    try {
+      const response = await axios.post(`${API_URL}/api/matrix/${id}/verify`, { keyword });
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying matrix access:', error);
+      throw error;
+    }
   }
 };

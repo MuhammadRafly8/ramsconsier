@@ -167,6 +167,8 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
+// Add these functions to the existing authController.js file
+
 // Get all users (admin only)
 exports.getAllUsers = async (req, res) => {
   try {
@@ -174,14 +176,106 @@ exports.getAllUsers = async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
-    
+
     const users = await User.findAll({
-      attributes: ['id', 'username', 'email', 'role', 'createdAt', 'updatedAt']
+      attributes: ['id', 'username', 'email', 'role', 'createdAt']
     });
     
     return res.status(200).json(users);
   } catch (error) {
-    console.error('Get all users error:', error);
-    return res.status(500).json({ error: 'Failed to get users' });
+    console.error('Error fetching users:', error);
+    return res.status(500).json({ error: 'Failed to fetch users' });
+  }
+};
+
+// Create new user (admin only)
+exports.createUser = async (req, res) => {
+  try {
+    // Check if requester is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+
+    const { username, email, password, role } = req.body;
+    
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+    
+    // Check if username already exists
+    const existingUsername = await User.findOne({ where: { username } });
+    if (existingUsername) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Check if email already exists
+    const existingEmail = await User.findOne({ where: { email } });
+    if (existingEmail) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create new user
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: role || 'user' // Default to 'user' if not specified
+    });
+    
+    // Don't return password
+    const userData = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt
+    };
+    
+    return res.status(201).json({ 
+      message: 'User created successfully', 
+      user: userData 
+    });
+  } catch (error) {
+    console.error('User creation error:', error);
+    return res.status(500).json({ 
+      error: 'User creation failed. Please try again.' 
+    });
+  }
+};
+
+// Delete user (admin only)
+exports.deleteUser = async (req, res) => {
+  try {
+    // Check if requester is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    }
+
+    const { id } = req.params;
+    
+    // Find user
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Prevent deleting yourself
+    if (user.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+    
+    // Delete user
+    await user.destroy();
+    
+    return res.status(200).json({ 
+      message: 'User deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return res.status(500).json({ error: 'Failed to delete user' });
   }
 };

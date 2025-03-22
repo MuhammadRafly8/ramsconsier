@@ -118,6 +118,13 @@ export default function MatrixDetailPage() {
   const verifyKeyword = async () => {
     if (!matrix) return;
     
+    setKeywordError("");
+    
+    if (!keyword.trim()) {
+      setKeywordError("Keyword is required");
+      return;
+    }
+    
     try {
       // Verify keyword through backend API
       const response = await matrixService.verifyMatrixAccess(matrixId, keyword);

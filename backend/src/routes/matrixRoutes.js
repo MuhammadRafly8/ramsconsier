@@ -1,60 +1,31 @@
-const { Router } = require('express');
-const router = Router();
-const { getAllMatrices, getUserMatrices, getMatrixById, createMatrix, updateMatrix, deleteMatrix } = require('../controllers/matrixController');
+const express = require('express');
+const router = express.Router();
+const matrixController = require('../controllers/matrixController');
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
 
-// Apply auth middleware to all routes
+// Verify matrix access with keyword (no authentication required)
+// This route needs to be before the authenticate middleware
+router.post('/:id/verify', matrixController.verifyMatrixAccess);
+
+// Apply auth middleware to all other routes
 router.use(authenticate);
 
 // Get all matrices (admin only)
-router.get('/all', isAdmin, getAllMatrices);
+router.get('/all', isAdmin, matrixController.getAllMatrices);
 
 // Get matrices for current user
-router.get('/', getUserMatrices);
+router.get('/', matrixController.getUserMatrices);
 
 // Get matrix by ID
-router.get('/:id', getMatrixById);
+router.get('/:id', matrixController.getMatrixById);
 
 // Create new matrix
-router.post('/', createMatrix);
+router.post('/', matrixController.createMatrix);
 
 // Update matrix
-router.put('/:id', updateMatrix);
+router.put('/:id', matrixController.updateMatrix);
 
 // Delete matrix
-router.delete('/:id', deleteMatrix);
-
-// Verify matrix access with keyword
-router.post('/:id/verify', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { keyword } = req.body;
-    const userId = req.user.id;
-    
-    // Get the matrix from database
-    const matrix = await req.app.get('models').Matrix.findByPk(id);
-    
-    if (!matrix) {
-      return res.status(404).json({ error: 'Matrix not found' });
-    }
-    
-    // Check if keyword matches
-    const authorized = matrix.keyword === keyword;
-    
-    if (authorized) {
-      // Optional: Store authorization in database
-      // For example, add user to authorizedUsers array in matrix model
-      // or create a separate table for matrix authorizations
-      
-      // For now, just return success
-      return res.json({ authorized: true });
-    } else {
-      return res.json({ authorized: false });
-    }
-  } catch (error) {
-    console.error('Error verifying matrix access:', error);
-    return res.status(500).json({ error: 'Failed to verify access' });
-  }
-});
+router.delete('/:id', matrixController.deleteMatrix);
 
 module.exports = router;
