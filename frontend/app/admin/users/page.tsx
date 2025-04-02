@@ -21,7 +21,10 @@ export default function UsersManagementPage() {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [userToUpdatePassword, setUserToUpdatePassword] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   const [newUser, setNewUser] = useState({
     username: '',
     email: '',
@@ -135,7 +138,41 @@ export default function UsersManagementPage() {
       toast.error('Failed to delete user');
     }
   };
-  
+
+  const initiateUpdatePassword = (userId: string) => {
+    setUserToUpdatePassword(userId);
+    setNewPassword("");
+    setShowPasswordModal(true);
+  };
+
+  const updateUserPassword = async () => {
+    if (!userToUpdatePassword || !newPassword.trim()) {
+      toast.error('Password cannot be empty');
+      return;
+    }
+    
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      await axios.put(`${API_URL}/api/auth/users/password`, { 
+        userId: userToUpdatePassword, 
+        newPassword 
+      });
+      
+      toast.success('Password updated successfully');
+      setShowPasswordModal(false);
+      setUserToUpdatePassword(null);
+      setNewPassword("");
+    } catch (error) {
+      console.error('Error updating password:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error('Failed to update password');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -210,6 +247,12 @@ export default function UsersManagementPage() {
                         }`}
                       >
                         {user.role === 'admin' ? 'Make User' : 'Make Admin'}
+                      </button>
+                      <button
+                        onClick={() => initiateUpdatePassword(user.id)}
+                        className="px-3 py-1 rounded-md bg-blue-500 hover:bg-blue-600 text-white"
+                      >
+                        Update Password
                       </button>
                       <button
                         onClick={() => initiateDeleteUser(user.id)}
@@ -337,6 +380,43 @@ export default function UsersManagementPage() {
           </div>
         </div>
       )}
+
+      {/* Update Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Update User Password</h2>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Enter new password"
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateUserPassword}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Update Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}
+  )}
+  

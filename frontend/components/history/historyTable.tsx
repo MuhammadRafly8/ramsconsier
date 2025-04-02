@@ -34,13 +34,18 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
           data = await historyService.getAllHistory();
         }
         
+        // Make sure data is an array before sorting
+        const historyArray = Array.isArray(data) ? data : [];
+        
         // Sort by timestamp (newest first)
-        setHistory(data.sort((a: HistoryEntry, b: HistoryEntry) => 
+        setHistory(historyArray.sort((a: HistoryEntry, b: HistoryEntry) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         ));
       } catch (error) {
         console.error("Error loading history:", error);
         toast.error("Failed to load history data");
+        // Initialize with empty array on error
+        setHistory([]);
       } finally {
         setLoading(false);
       }

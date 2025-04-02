@@ -149,6 +149,15 @@ const userService = {
   deleteUser: async (id: string) => {
     const response = await axios.delete(`${API_URL}/api/users/${id}`);
     return response.data;
+  },
+  
+  // Add this to the userService or authService section
+  updateUserPassword: async (userId: string, newPassword: string) => {
+    const response = await axios.put(`${API_URL}/api/auth/users/password`, { 
+      userId, 
+      newPassword 
+    });
+    return response.data;
   }
 };
 

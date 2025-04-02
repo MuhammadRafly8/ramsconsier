@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { MatrixItem, StructuredMatrix } from "../../../types/matrix";
 import { useAuth } from "../../../components/auth/authContext";
@@ -22,6 +22,7 @@ export default function MatrixDetailPage() {
   const params = useParams();
   const matrixId = params.id as string;
   const { isAuthenticated, userId, isAdmin } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     // Load matrix from API instead of localStorage
@@ -55,27 +56,59 @@ export default function MatrixDetailPage() {
     const key = `${rowId}_${colId}`;
     const newValue = !matrix.data.dependencies[key];
     
-    const updatedMatrix = {
-      ...matrix,
-      data: {
-        ...matrix.data,
-        dependencies: {
-          ...matrix.data.dependencies,
-          [key]: newValue
-        }
-      }
-    };
-    
-    setMatrix(updatedMatrix);
-    calculateTotals(updatedMatrix.data);
-    
     try {
-      // Save changes to API
-      await matrixService.updateMatrix(matrix.id, updatedMatrix);
-      toast.success("Cell updated successfully");
+      // Buat salinan matrix yang akan diupdate
+      const updatedMatrix = {
+        ...matrix,
+        data: {
+          ...matrix.data,
+          dependencies: {
+            ...matrix.data.dependencies,
+            [key]: newValue
+          }
+        }
+      };
+      
+      // Update state lokal untuk UX yang lebih baik
+      setMatrix(updatedMatrix);
+      calculateTotals(updatedMatrix.data);
+      
+      // Kirim hanya data yang diperlukan ke backend
+      // Pastikan format sesuai dengan yang diharapkan backend
+      const updatePayload = {
+        title: matrix.title,
+        description: matrix.description,
+        keyword: matrix.keyword,
+        data: updatedMatrix.data
+      };
+      
+      // Simpan perubahan ke API
+      await matrixService.updateMatrix(matrixId, updatePayload);
+      
+      // Buat entri history untuk perubahan ini
+      const historyEntry = {
+        userId: userId || 'unknown',
+        userRole: isAdmin() ? 'admin' : 'user',
+        timestamp: new Date().toISOString(),
+        action: newValue ? 'add_dependency' : 'remove_dependency',
+        matrixId: matrixId,
+        details: `${newValue ? 'Added' : 'Removed'} dependency between ${matrix.data.rows.find(r => r.id === rowId)?.name || rowId} and ${matrix.data.columns.find(c => c.id === colId)?.name || colId}`,
+        matrixSnapshot: JSON.stringify(updatedMatrix.data)
+      };
+      
+      // Catat perubahan dalam history
+      await historyService.createHistoryEntry(historyEntry);
+      
+      toast.success(newValue ? "Dependency added" : "Dependency removed");
     } catch (error) {
       console.error("Error updating matrix:", error);
       toast.error("Failed to update matrix");
+      
+      // Jika terjadi error, kembalikan ke matrix asli
+      if (matrix) {
+        setMatrix({...matrix});
+        calculateTotals(matrix.data);
+      }
     }
   };
 
@@ -169,6 +202,11 @@ export default function MatrixDetailPage() {
       await historyService.createHistoryEntry(historyEntry);
       
       toast.success("Matrix submitted successfully");
+      
+      // If admin, redirect to history page for this matrix
+      if (isAdmin()) {
+        router.push(`/matrix/${matrixId}/history`);
+      }
     } catch (error) {
       console.error("Error submitting matrix:", error);
       toast.error("Failed to submit matrix");
@@ -249,12 +287,14 @@ export default function MatrixDetailPage() {
             >
               Submit Matrix
             </button>
-            <Link 
-              href={`/matrix/${matrixId}/history`}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-            >
-              View History
-            </Link>
+            {isAdmin() && (
+              <Link 
+                href={`/matrix/${matrixId}/history`}
+                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              >
+                View History
+              </Link>
+            )}
           </div>
         </div>
 
