@@ -1,4 +1,4 @@
-const { Matrix, User } = require('../models');
+const { Matrix, User, History } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all matrices (admin only)
@@ -100,31 +100,41 @@ async function createMatrix(req, res) {
   }
 }
 
+// Remove this duplicate import
+// const { User, History } = require('../models');
+// const Matrix = require('../models/matrix');
+
 // Update matrix
 async function updateMatrix(req, res) {
   try {
     const { id } = req.params;
-    const { title, description, keyword, data, sharedWith } = req.body;
-    const userId = req.user.id;
+    const updates = req.body;
     
+    // Find the matrix
     const matrix = await Matrix.findByPk(id);
     
     if (!matrix) {
       return res.status(404).json({ error: 'Matrix not found' });
     }
     
-    // Check if user is the creator or admin
-    if (matrix.createdBy !== userId && req.user.role !== 'admin') {
+    // Check if user is authorized to update this matrix
+    if (matrix.createdBy !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to update this matrix' });
     }
     
-    await matrix.update({
-      title: title || matrix.title,
-      description: description !== undefined ? description : matrix.description,
-      keyword: keyword || matrix.keyword,
-      data: data || matrix.data,
-      sharedWith: sharedWith || matrix.sharedWith
+    // Create a history entry for this update
+    await History.create({
+      userId: req.user.id,
+      userRole: req.user.role,
+      matrixId: id,
+      timestamp: new Date(),
+      action: 'edit_matrix',
+      details: `${req.user.username} updated the matrix`,
+      matrixSnapshot: matrix.data // Save the previous state
     });
+    
+    // Update the matrix
+    await matrix.update(updates);
     
     return res.status(200).json(matrix);
   } catch (error) {

@@ -28,8 +28,8 @@ export default function HistoryPage() {
         <h2 className="text-2xl font-bold mb-6">Change History</h2>
         <div className="mb-4">
           <p className="text-gray-600">
-            This page shows the history of all changes made to the dependency matrix.
-            Each entry includes the user who made the change, the affected cell, and the action taken.
+            This page shows the history of all changes made to the dependency matrices.
+            Each entry includes the user who made the change, the affected matrix, and the action taken.
           </p>
         </div>
         <HistoryTable />

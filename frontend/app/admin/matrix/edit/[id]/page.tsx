@@ -41,8 +41,13 @@ export default function EditMatrixPage() {
       }
     };
 
+    // Check if user is admin or the creator of the matrix
     if (isAdmin()) {
       fetchMatrix();
+    } else {
+      // Redirect non-admin users
+      router.push("/matrix");
+      toast.error("You don't have permission to edit this matrix");
     }
   }, [matrixId, router, isAdmin]);
 

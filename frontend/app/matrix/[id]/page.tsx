@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import { toast } from "react-toastify";
 import { MatrixItem, StructuredMatrix } from "../../../types/matrix";
 import { useAuth } from "../../../components/auth/authContext";
-import { matrixService } from "../../../services/api";
+import { matrixService, historyService } from "../../../services/api";
+import Link from 'next/link';
 
 export default function MatrixDetailPage() {
   const [matrix, setMatrix] = useState<MatrixItem | null>(null);
@@ -142,6 +143,38 @@ export default function MatrixDetailPage() {
     }
   };
 
+  // Add the handleSubmitMatrix function
+  const handleSubmitMatrix = async () => {
+    if (!matrix || !isAuthenticated || !isAuthorized) return;
+    
+    try {
+      // Create a snapshot of the current matrix state
+      const matrixSnapshot = JSON.stringify(matrix.data);
+      
+      // Get current timestamp
+      const timestamp = new Date().toISOString();
+      
+      // Create history entry
+      const historyEntry = {
+        userId: userId || 'unknown',
+        userRole: isAdmin() ? 'admin' : 'user',
+        timestamp: timestamp,
+        action: 'submit_matrix',
+        matrixId: matrixId,
+        details: `${userId || 'User'} submitted their matrix`,
+        matrixSnapshot: matrixSnapshot
+      };
+      
+      // Save to API
+      await historyService.createHistoryEntry(historyEntry);
+      
+      toast.success("Matrix submitted successfully");
+    } catch (error) {
+      console.error("Error submitting matrix:", error);
+      toast.error("Failed to submit matrix");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-grow container mx-auto p-4 text-center">
@@ -206,11 +239,23 @@ export default function MatrixDetailPage() {
       )}
       
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="mb-6">
+        <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">{matrix.title}</h2>
-          {matrix.description && (
-            <p className="text-gray-600 mt-2">{matrix.description}</p>
-          )}
+          <div className="flex space-x-2">
+            <button
+              onClick={handleSubmitMatrix}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              disabled={!isAuthorized}
+            >
+              Submit Matrix
+            </button>
+            <Link 
+              href={`/matrix/${matrixId}/history`}
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+            >
+              View History
+            </Link>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

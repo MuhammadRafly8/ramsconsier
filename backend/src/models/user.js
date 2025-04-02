@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       User.hasMany(models.Matrix, { foreignKey: 'createdBy', as: 'matrices' });
+      User.hasMany(models.History, { foreignKey: 'userId', as: 'histories' });
     }
   }
   

@@ -12,7 +12,7 @@ axios.interceptors.response.use(
 );
 
 // Auth service
-export const authService = {
+const authService = {
   register: async (userData: { username: string; email: string; password: string }) => {
     try {
       console.log('Sending registration request to:', `${API_URL}/api/auth/register`);
@@ -64,7 +64,7 @@ export const authService = {
 };
 
 // Matrix service
-export const matrixService = {
+const matrixService = {
   getAllMatrices: async () => {
     const response = await axios.get(`${API_URL}/api/matrix`);
     return response.data;
@@ -100,4 +100,62 @@ export const matrixService = {
       throw error;
     }
   }
+};
+
+// History service
+const historyService = {
+  // Get all history entries
+  getAllHistory: async () => {
+    const response = await axios.get(`${API_URL}/api/history`);
+    return response.data;
+  },
+
+  // Get history entries for a specific matrix
+  getHistoryByMatrixId: async (matrixId: string) => {
+    const response = await axios.get(`${API_URL}/api/history/matrix/${matrixId}`);
+    return response.data;
+  },
+
+  // Create a new history entry
+  createHistoryEntry: async (entry: unknown) => {
+    const response = await axios.post(`${API_URL}/api/history`, entry);
+    return response.data;
+  },
+
+  // Delete a history entry
+  deleteHistoryEntry: async (id: string) => {
+    const response = await axios.delete(`${API_URL}/api/history/${id}`);
+    return response.data;
+  }
+};
+
+// User service
+const userService = {
+  getAllUsers: async () => {
+    const response = await axios.get(`${API_URL}/api/users`);
+    return response.data;
+  },
+  
+  getUserById: async (id: string) => {
+    const response = await axios.get(`${API_URL}/api/users/${id}`);
+    return response.data;
+  },
+  
+  updateUser: async (id: string, userData: unknown) => {
+    const response = await axios.put(`${API_URL}/api/users/${id}`, userData);
+    return response.data;
+  },
+  
+  deleteUser: async (id: string) => {
+    const response = await axios.delete(`${API_URL}/api/users/${id}`);
+    return response.data;
+  }
+};
+
+// Export all services
+export {
+  authService,
+  matrixService,
+  userService,
+  historyService
 };

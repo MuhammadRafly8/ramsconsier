@@ -4,6 +4,7 @@ const cors = require('cors');
 const { sequelize } = require('./models');
 const matrixRoutes = require('./routes/matrixRoutes');
 const authRoutes = require('./routes/authRoutes');
+const historyRoutes = require('./routes/historyRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/matrix', matrixRoutes);
+app.use('/api/history', historyRoutes);
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
