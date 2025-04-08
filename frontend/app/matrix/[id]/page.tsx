@@ -57,7 +57,7 @@ export default function MatrixDetailPage() {
     const newValue = !matrix.data.dependencies[key];
     
     try {
-      // Buat salinan matrix yang akan diupdate
+      // Create a copy of the matrix to update
       const updatedMatrix = {
         ...matrix,
         data: {
@@ -69,12 +69,11 @@ export default function MatrixDetailPage() {
         }
       };
       
-      // Update state lokal untuk UX yang lebih baik
+      // Update local state for better UX
       setMatrix(updatedMatrix);
       calculateTotals(updatedMatrix.data);
       
-      // Kirim hanya data yang diperlukan ke backend
-      // Pastikan format sesuai dengan yang diharapkan backend
+      // Send only the necessary data to the backend
       const updatePayload = {
         title: matrix.title,
         description: matrix.description,
@@ -82,21 +81,29 @@ export default function MatrixDetailPage() {
         data: updatedMatrix.data
       };
       
-      // Simpan perubahan ke API
+      // Save changes to API
       await matrixService.updateMatrix(matrixId, updatePayload);
       
-      // Buat entri history untuk perubahan ini
+      // Create history entry for this change
+      const rowName = matrix.data.rows.find(r => r.id === rowId)?.name || `Row ${rowId}`;
+      const colName = matrix.data.columns.find(c => c.id === colId)?.name || `Column ${colId}`;
+      
       const historyEntry = {
         userId: userId || 'unknown',
         userRole: isAdmin() ? 'admin' : 'user',
-        timestamp: new Date().toISOString(),
-        action: newValue ? 'add_dependency' : 'remove_dependency',
         matrixId: matrixId,
-        details: `${newValue ? 'Added' : 'Removed'} dependency between ${matrix.data.rows.find(r => r.id === rowId)?.name || rowId} and ${matrix.data.columns.find(c => c.id === colId)?.name || colId}`,
+        timestamp: new Date().toISOString(),
+        action: newValue ? 'add' : 'remove',
+        rowId: rowId,
+        columnId: colId,
+        rowName: rowName,
+        columnName: colName,
+        cellKey: key,
+        details: `${newValue ? 'Added' : 'Removed'} dependency between ${rowName} and ${colName}`,
         matrixSnapshot: JSON.stringify(updatedMatrix.data)
       };
       
-      // Catat perubahan dalam history
+      // Record the change in history
       await historyService.createHistoryEntry(historyEntry);
       
       toast.success(newValue ? "Dependency added" : "Dependency removed");
@@ -104,7 +111,7 @@ export default function MatrixDetailPage() {
       console.error("Error updating matrix:", error);
       toast.error("Failed to update matrix");
       
-      // Jika terjadi error, kembalikan ke matrix asli
+      // If there's an error, revert to the original matrix
       if (matrix) {
         setMatrix({...matrix});
         calculateTotals(matrix.data);
@@ -176,32 +183,52 @@ export default function MatrixDetailPage() {
     }
   };
 
-  // Add the handleSubmitMatrix function
+  // Add this near the top of the file with other state variables
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submissionComment, setSubmissionComment] = useState("");
+  
+  // Update the handleSubmitMatrix function to properly capture the matrix state
   const handleSubmitMatrix = async () => {
     if (!matrix || !isAuthenticated || !isAuthorized) return;
     
     try {
-      // Create a snapshot of the current matrix state
-      const matrixSnapshot = JSON.stringify(matrix.data);
+      // Make sure we're sending just the structured matrix data, not the whole matrix object
+      const matrixData = {
+        rows: matrix.data.rows,
+        columns: matrix.data.columns,
+        dependencies: matrix.data.dependencies
+      };
       
-      // Get current timestamp
-      const timestamp = new Date().toISOString();
+      // Create a snapshot of the current matrix state with all dependencies
+      const matrixSnapshot = JSON.stringify(matrixData);
       
-      // Create history entry
+      // Calculate totals for the submission record
+      const rowTotalValues = Object.values(rowTotals);
+      const totalDependencies = rowTotalValues.reduce((sum, val) => sum + val, 0);
+      
+      // Create a more detailed history entry
       const historyEntry = {
         userId: userId || 'unknown',
         userRole: isAdmin() ? 'admin' : 'user',
-        timestamp: timestamp,
+        timestamp: new Date().toISOString(),
         action: 'submit_matrix',
         matrixId: matrixId,
-        details: `${userId || 'User'} submitted their matrix`,
-        matrixSnapshot: matrixSnapshot
+        details: submissionComment 
+          ? `User submitted matrix "${matrix.title}" with comment: ${submissionComment}`
+          : `User submitted matrix "${matrix.title}" with ${totalDependencies} dependencies`,
+        matrixSnapshot: matrixSnapshot,
+        adminOnly: true // Make sure this is only visible to admins
       };
       
       // Save to API
       await historyService.createHistoryEntry(historyEntry);
       
+      // Show success message
       toast.success("Matrix submitted successfully");
+      
+      // Close modal
+      setShowSubmitModal(false);
+      setSubmissionComment("");
       
       // If admin, redirect to history page for this matrix
       if (isAdmin()) {
@@ -212,7 +239,7 @@ export default function MatrixDetailPage() {
       toast.error("Failed to submit matrix");
     }
   };
-
+  
   if (loading) {
     return (
       <div className="flex-grow container mx-auto p-4 text-center">
@@ -276,24 +303,73 @@ export default function MatrixDetailPage() {
         </div>
       )}
       
+      {/* Add Submit Modal here */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Submit Matrix</h3>
+            <p className="mb-4">
+              Are you sure you want to submit this matrix? This will create a record for admin review.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Comments (optional)
+              </label>
+              <textarea
+                className="w-full border border-gray-300 rounded p-2"
+                rows={3}
+                value={submissionComment}
+                onChange={(e) => setSubmissionComment(e.target.value)}
+                placeholder="Add any comments about your submission..."
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitMatrix}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">{matrix.title}</h2>
           <div className="flex space-x-2">
-            <button
-              onClick={handleSubmitMatrix}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              disabled={!isAuthorized}
-            >
-              Submit Matrix
-            </button>
-            {isAdmin() && (
-              <Link 
-                href={`/matrix/${matrixId}/history`}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+            {!isAdmin() && (
+              <button
+                onClick={() => setShowSubmitModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={!isAuthorized}
               >
-                View History
-              </Link>
+                Submit Matrix
+              </button>
+            )}
+            {isAdmin() && (
+              <>
+                <button
+                  onClick={() => setShowSubmitModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  disabled={!isAuthorized}
+                >
+                  Submit Matrix
+                </button>
+                <Link 
+                  href={`/matrix/${matrixId}/history`}
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  View History
+                </Link>
+              </>
             )}
           </div>
         </div>

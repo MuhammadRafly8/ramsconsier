@@ -60,7 +60,16 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
 
   const viewMatrix = (matrixSnapshot: string) => {
     try {
+      console.log("Parsing matrix snapshot:", matrixSnapshot.substring(0, 100) + "...");
       const matrix = JSON.parse(matrixSnapshot);
+      
+      // Check if the matrix data has the expected structure
+      if (!matrix.rows || !matrix.columns || !matrix.dependencies) {
+        console.error("Matrix data is missing required properties:", matrix);
+        toast.error("Invalid matrix data format");
+        return;
+      }
+      
       setSelectedMatrix(matrix);
       setShowMatrixModal(true);
     } catch (error) {
@@ -188,20 +197,76 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
 
       {/* Matrix Modal */}
       {showMatrixModal && selectedMatrix && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-0">
-          <div className="bg-white rounded-lg p-3 md:p-6 w-full max-w-5xl max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-2 md:mb-4">
-              <h3 className="text-base md:text-xl font-bold">Submitted Matrix</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Matrix Snapshot</h3>
               <button 
                 onClick={closeMatrixModal}
                 className="text-gray-500 hover:text-gray-700"
               >
-                ✕
+                <span className="text-2xl">&times;</span>
               </button>
             </div>
             
-            {/* Matrix view content remains the same */}
-            {/* ... */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 p-2 text-center">ID</th>
+                    <th className="border border-gray-300 p-2 text-left">Sub-Attribute</th>
+                    <th className="border border-gray-300 p-2 text-center">Category</th>
+                    {selectedMatrix.columns.map((column) => (
+                      <th key={column.id} className="border border-gray-300 p-2 text-center">
+                        {column.id}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(selectedMatrix.rows.reduce((acc, row) => {
+                    if (!acc[row.category]) {
+                      acc[row.category] = [];
+                    }
+                    acc[row.category].push(row);
+                    return acc;
+                  }, {} as Record<string, typeof selectedMatrix.rows>)).map(([category, rows], categoryIndex) => (
+                    <Fragment key={category}>
+                      {rows.map((row, rowIndex) => (
+                        <tr key={row.id}>
+                          <td className="border border-gray-300 p-2 text-center">{row.id}</td>
+                          <td className="border border-gray-300 p-2 text-left">
+                            {row.name}
+                          </td>
+                          {rowIndex === 0 ? (
+                            <td 
+                              className="border border-gray-300 p-2 text-center font-bold" 
+                              rowSpan={rows.length}
+                            >
+                              {category}
+                            </td>
+                          ) : null}
+                          {selectedMatrix.columns.map((column) => {
+                            const key = `${row.id}_${column.id}`;
+                            const value = selectedMatrix.dependencies[key] || false;
+                            return (
+                              <td 
+                                key={key} 
+                                className={`border border-gray-300 p-2 text-center ${
+                                  value ? 'bg-green-800 text-white' : 'bg-white'
+                                }`}
+                              >
+                                {value ? 'x' : ''}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

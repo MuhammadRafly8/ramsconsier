@@ -7,25 +7,25 @@ import HistoryTable from '../../../../components/history/historyTable';
 import Link from 'next/link';
 
 export default function MatrixHistoryPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const router = useRouter();
   const params = useParams();
   const matrixId = params.id as string;
 
   useEffect(() => {
-    // Redirect if not authenticated
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth/login');
+    // Redirect if not authenticated or not admin
+    if (!isLoading && (!isAuthenticated || !isAdmin())) {
+      router.push('/unauthorized');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, isAdmin, router]);
 
   // Don't render anything until authentication check is complete
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
-  // Don't render content if not authenticated
-  if (!isAuthenticated) {
+  // Don't render content if not authenticated or not admin
+  if (!isAuthenticated || !isAdmin()) {
     return null;
   }
 

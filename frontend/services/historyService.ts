@@ -15,6 +15,7 @@ export interface HistoryEntry {
   cellKey?: string;
   details?: string;
   matrixSnapshot?: string;
+  adminOnly?: boolean;
 }
 
 const historyService = {

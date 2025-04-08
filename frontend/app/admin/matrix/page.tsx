@@ -106,6 +106,11 @@ export default function AdminMatrixPage() {
     router.push(`/admin/matrix/edit/${id}`);
   };
 
+  // Add this new function to view matrix history
+  const viewMatrixHistory = (id: string) => {
+    router.push(`/matrix/${id}/history`);
+  };
+
   return (
     <AdminRoute>
       <main className="flex-grow container mx-auto p-4">
@@ -162,6 +167,14 @@ export default function AdminMatrixPage() {
                             title="Edit this matrix"
                           >
                             Edit
+                          </button>
+                          {/* Add History button */}
+                          <button
+                            onClick={() => viewMatrixHistory(matrix.id)}
+                            className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+                            title="View submission history"
+                          >
+                            History
                           </button>
                           <button
                             onClick={() => copyShareLink(matrix.id, matrix.keyword)}

@@ -31,6 +31,65 @@ async function getAllHistory(req, res) {
 async function getHistoryByMatrixId(req, res) {
   try {
     const { matrixId } = req.params;
+    const isAdmin = req.user.role === 'admin';
+    
+    // Build query conditions
+    const whereConditions = { matrixId };
+    
+    // If not admin, only show entries that are not admin-only
+    if (!isAdmin) {
+      whereConditions.adminOnly = false;
+    }
+    
+    const historyEntries = await History.findAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username']
+        }
+      ],
+      order: [['timestamp', 'DESC']]
+    });
+    
+    return res.status(200).json(historyEntries);
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return res.status(500).json({ error: 'Failed to fetch history' });
+  }
+}
+
+// Get all history entries (admin only)
+async function getAllHistory(req, res) {
+  try {
+    // Only admins can access all history
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const historyEntries = await History.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username']
+        }
+      ],
+      order: [['timestamp', 'DESC']]
+    });
+    
+    return res.status(200).json(historyEntries);
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return res.status(500).json({ error: 'Failed to fetch history' });
+  }
+}
+
+// Check if matrix exists
+async function getHistoryByMatrixId(req, res) {
+  try {
+    const { matrixId } = req.params;
     
     // Check if matrix exists
     const matrix = await Matrix.findByPk(matrixId);

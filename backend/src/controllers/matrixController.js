@@ -118,20 +118,14 @@ async function updateMatrix(req, res) {
     }
     
     // Check if user is authorized to update this matrix
-    if (matrix.createdBy !== req.user.id && req.user.role !== 'admin') {
+    // Allow both admin and users with the correct keyword
+    const isAdmin = req.user.role === 'admin';
+    const isCreator = matrix.createdBy === req.user.id;
+    const hasCorrectKeyword = updates.keyword === matrix.keyword;
+    
+    if (!isAdmin && !isCreator && !hasCorrectKeyword) {
       return res.status(403).json({ error: 'Not authorized to update this matrix' });
     }
-    
-    // Create a history entry for this update
-    await History.create({
-      userId: req.user.id,
-      userRole: req.user.role,
-      matrixId: id,
-      timestamp: new Date(),
-      action: 'edit_matrix',
-      details: `${req.user.username} updated the matrix`,
-      matrixSnapshot: matrix.data // Save the previous state
-    });
     
     // Update the matrix
     await matrix.update(updates);
