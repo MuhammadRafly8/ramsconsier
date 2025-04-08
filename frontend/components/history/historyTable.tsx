@@ -28,11 +28,15 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
         let data;
         if (matrixId) {
           // If matrixId is provided, fetch history for that specific matrix
+          console.log(`Fetching history for matrix: ${matrixId}`);
           data = await historyService.getHistoryByMatrixId(matrixId);
         } else {
           // Otherwise, fetch all history
+          console.log('Fetching all history');
           data = await historyService.getAllHistory();
         }
+        
+        console.log('History data received:', data);
         
         // Make sure data is an array before sorting
         const historyArray = Array.isArray(data) ? data : [];

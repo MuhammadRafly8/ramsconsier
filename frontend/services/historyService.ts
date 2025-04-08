@@ -20,25 +20,25 @@ export interface HistoryEntry {
 const historyService = {
   // Get all history entries
   getAllHistory: async () => {
-    const response = await axios.get(`${API_URL}/history`);
+    const response = await axios.get(`${API_URL}/api/history`);
     return response.data;
   },
 
   // Get history entries for a specific matrix
   getHistoryByMatrixId: async (matrixId: string) => {
-    const response = await axios.get(`${API_URL}/history/matrix/${matrixId}`);
+    const response = await axios.get(`${API_URL}/api/history/matrix/${matrixId}`);
     return response.data;
   },
 
   // Create a new history entry
   createHistoryEntry: async (entry: HistoryEntry) => {
-    const response = await axios.post(`${API_URL}/history`, entry);
+    const response = await axios.post(`${API_URL}/api/history`, entry);
     return response.data;
   },
 
   // Delete a history entry
   deleteHistoryEntry: async (id: string) => {
-    const response = await axios.delete(`${API_URL}/history/${id}`);
+    const response = await axios.delete(`${API_URL}/api/history/${id}`);
     return response.data;
   }
 };
