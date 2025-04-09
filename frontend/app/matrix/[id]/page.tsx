@@ -84,27 +84,8 @@ export default function MatrixDetailPage() {
       // Save changes to API
       await matrixService.updateMatrix(matrixId, updatePayload);
       
-      // Create history entry for this change
-      const rowName = matrix.data.rows.find(r => r.id === rowId)?.name || `Row ${rowId}`;
-      const colName = matrix.data.columns.find(c => c.id === colId)?.name || `Column ${colId}`;
-      
-      const historyEntry = {
-        userId: userId || 'unknown',
-        userRole: isAdmin() ? 'admin' : 'user',
-        matrixId: matrixId,
-        timestamp: new Date().toISOString(),
-        action: newValue ? 'add' : 'remove',
-        rowId: rowId,
-        columnId: colId,
-        rowName: rowName,
-        columnName: colName,
-        cellKey: key,
-        details: `${newValue ? 'Added' : 'Removed'} dependency between ${rowName} and ${colName}`,
-        matrixSnapshot: JSON.stringify(updatedMatrix.data)
-      };
-      
-      // Record the change in history
-      await historyService.createHistoryEntry(historyEntry);
+      // We're removing the history entry creation for regular cell changes
+      // This way only submissions will appear in history
       
       toast.success(newValue ? "Dependency added" : "Dependency removed");
     } catch (error) {
@@ -187,16 +168,25 @@ export default function MatrixDetailPage() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submissionComment, setSubmissionComment] = useState("");
   
-  // Update the handleSubmitMatrix function to properly capture the matrix state
   const handleSubmitMatrix = async () => {
     if (!matrix || !isAuthenticated || !isAuthorized) return;
     
     try {
-      // Make sure we're sending just the structured matrix data, not the whole matrix object
+      // Create a complete matrix snapshot with the correct structure
+      // Make sure we include all necessary fields and maintain the exact structure
       const matrixData = {
-        rows: matrix.data.rows,
-        columns: matrix.data.columns,
-        dependencies: matrix.data.dependencies
+        id: matrix.id,
+        title: matrix.title,
+        description: matrix.description,
+        keyword: matrix.keyword,
+        createdBy: matrix.createdBy,
+        createdAt: matrix.createdAt,
+        updatedAt: new Date().toISOString(),
+        data: {
+          rows: matrix.data.rows,
+          columns: matrix.data.columns,
+          dependencies: matrix.data.dependencies
+        }
       };
       
       // Create a snapshot of the current matrix state with all dependencies
@@ -217,6 +207,8 @@ export default function MatrixDetailPage() {
           ? `User submitted matrix "${matrix.title}" with comment: ${submissionComment}`
           : `User submitted matrix "${matrix.title}" with ${totalDependencies} dependencies`,
         matrixSnapshot: matrixSnapshot,
+        matrixTitle: matrix.title,
+        matrixDescription: matrix.description,
         adminOnly: true // Make sure this is only visible to admins
       };
       
@@ -368,6 +360,12 @@ export default function MatrixDetailPage() {
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
                 >
                   View History
+                </Link>
+                <Link 
+                  href={`/admin/matrix/submissions`}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  All Submissions
                 </Link>
               </>
             )}

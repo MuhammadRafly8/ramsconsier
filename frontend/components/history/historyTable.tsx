@@ -61,11 +61,27 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
   const viewMatrix = (matrixSnapshot: string) => {
     try {
       console.log("Parsing matrix snapshot:", matrixSnapshot.substring(0, 100) + "...");
-      const matrix = JSON.parse(matrixSnapshot);
+      const parsedData = JSON.parse(matrixSnapshot);
       
-      // Check if the matrix data has the expected structure
-      if (!matrix.rows || !matrix.columns || !matrix.dependencies) {
-        console.error("Matrix data is missing required properties:", matrix);
+      // Handle different matrix data structures
+      let matrix;
+      
+      // Check if the matrix has a data property (new format)
+      if (parsedData.data && parsedData.data.rows && parsedData.data.columns && parsedData.data.dependencies) {
+        // Extract the structured data from the nested format
+        matrix = {
+          rows: parsedData.data.rows,
+          columns: parsedData.data.columns,
+          dependencies: parsedData.data.dependencies
+        };
+      } 
+      // Check if matrix has direct properties (old format)
+      else if (parsedData.rows && parsedData.columns && parsedData.dependencies) {
+        matrix = parsedData;
+      }
+      // If neither format is valid
+      else {
+        console.error("Matrix data is missing required properties:", parsedData);
         toast.error("Invalid matrix data format");
         return;
       }

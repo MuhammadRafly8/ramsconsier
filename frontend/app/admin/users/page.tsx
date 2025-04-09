@@ -173,6 +173,52 @@ export default function UsersManagementPage() {
     }
   };
 
+  // Add a new state for the username update modal and the user to update
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [userToUpdateUsername, setUserToUpdateUsername] = useState<string | null>(null);
+  const [newUsername, setNewUsername] = useState("");
+  
+  // Add a function to initiate username update
+  const initiateUpdateUsername = (userId: string, currentUsername: string) => {
+    setUserToUpdateUsername(userId);
+    setNewUsername(currentUsername);
+    setShowUsernameModal(true);
+  };
+  
+  // Add a function to update the username
+  const updateUsername = async () => {
+    if (!userToUpdateUsername || !newUsername.trim()) {
+      toast.error('Username cannot be empty');
+      return;
+    }
+    
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      await axios.put(`${API_URL}/api/auth/users/username`, { 
+        userId: userToUpdateUsername, 
+        newUsername 
+      });
+      
+      // Update local state
+      setUsers(users.map(user => 
+        user.id === userToUpdateUsername ? { ...user, username: newUsername } : user
+      ));
+      
+      toast.success('Username updated successfully');
+      setShowUsernameModal(false);
+      setUserToUpdateUsername(null);
+      setNewUsername("");
+    } catch (error) {
+      console.error('Error updating username:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error('Failed to update username');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -247,6 +293,12 @@ export default function UsersManagementPage() {
                         }`}
                       >
                         {user.role === 'admin' ? 'Make User' : 'Make Admin'}
+                      </button>
+                      <button
+                        onClick={() => initiateUpdateUsername(user.id, user.username)}
+                        className="px-3 py-1 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white"
+                      >
+                        Edit Username
                       </button>
                       <button
                         onClick={() => initiateUpdatePassword(user.id)}
@@ -412,6 +464,43 @@ export default function UsersManagementPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Update Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Username Update Modal */}
+      {showUsernameModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl transform transition-all">
+            <h2 className="text-xl font-bold mb-4">Update Username</h2>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                New Username
+              </label>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Enter new username"
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowUsernameModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateUsername}
+                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              >
+                Update Username
               </button>
             </div>
           </div>

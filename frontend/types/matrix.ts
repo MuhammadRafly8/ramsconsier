@@ -1,4 +1,5 @@
 export interface MatrixItem {
+  authorized: unknown;
   id: string;
   title: string;
   description: string;
