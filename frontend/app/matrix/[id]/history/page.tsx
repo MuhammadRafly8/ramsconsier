@@ -7,6 +7,7 @@ import HistoryTable from '../../../../components/history/historyTable';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { StructuredMatrix } from '../../../../types/matrix';
+import MatrixSnapshotViewer from '../../../../components/matrix/matrixSnapshotViewer';
 
 export default function MatrixHistoryPage() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
@@ -78,6 +79,7 @@ export default function MatrixHistoryPage() {
     return null;
   }
 
+  // Replace the existing matrix modal with the shared component
   return (
     <main className="flex-grow container mx-auto p-4">
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -96,173 +98,14 @@ export default function MatrixHistoryPage() {
         <HistoryTable matrixId={matrixId} viewMatrix={viewMatrix} />
       </div>
       
-      {/* Matrix Modal */}
+      {/* Matrix Modal using the shared component */}
       {showMatrixModal && selectedMatrix && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-[98vw] h-[98vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xl font-bold">
-                Matrix Snapshot 
-                <span className="text-sm ml-2 text-gray-600">
-                  ({selectedMatrix.rows.length} sub-attributes × {selectedMatrix.columns.length} columns)
-                </span>
-              </h3>
-              <button 
-                onClick={closeMatrixModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <span className="text-2xl">&times;</span>
-              </button>
-            </div>
-            
-            <div className="mb-2 text-xs text-gray-600">
-              <p>This is a snapshot of the matrix at the time of submission.</p>
-            </div>
-            
-            <div className="overflow-auto flex-grow">
-              <div className="min-w-max">
-                <table className="min-w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 p-1 text-center">ID</th>
-                      <th className="border border-gray-300 p-1 text-left">Sub-Attribute</th>
-                      <th className="border border-gray-300 p-1 text-center">Category</th>
-                      <th className="border border-gray-300 p-1 text-center">Relation To</th>
-                      {selectedMatrix.columns.map((column) => (
-                        <th 
-                          key={column.id} 
-                          className={`border border-gray-300 p-1 text-center ${
-                            column.id % 5 === 0 ? 'border-r-2 border-r-gray-500' : ''
-                          }`}
-                        >
-                          {column.id}
-                        </th>
-                      ))}
-                      <th className="border border-gray-300 p-1 text-center">Total</th>
-                      <th className="border border-gray-300 p-1 text-center">Category Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      try {
-                        // Group rows by category
-                        const rowsByCategory = selectedMatrix.rows.reduce((acc, row) => {
-                          const category = row.category || 'Uncategorized';
-                          if (!acc[category]) {
-                            acc[category] = [];
-                          }
-                          acc[category].push(row);
-                          return acc;
-                        }, {} as Record<string, typeof selectedMatrix.rows>);
-                        
-                        // Calculate row totals
-                        const rowTotals: Record<number, number> = {};
-                        selectedMatrix.rows.forEach(row => {
-                          rowTotals[row.id] = 0;
-                        });
-                        
-                        Object.entries(selectedMatrix.dependencies).forEach(([key, value]) => {
-                          if (value) {
-                            const [rowId] = key.split('_').map(Number);
-                            rowTotals[rowId] = (rowTotals[rowId] || 0) + 1;
-                          }
-                        });
-                        
-                        // Calculate category totals
-                        const categoryTotals: Record<string, number> = {};
-                        Object.entries(rowsByCategory).forEach(([category, rows]) => {
-                          categoryTotals[category] = rows.reduce((sum, row) => sum + (rowTotals[row.id] || 0), 0);
-                        });
-                        
-                        // Calculate subtotals for each row
-                        const calculateSubtotals = (rowId: number) => {
-                          let count = 0;
-                          selectedMatrix.columns.forEach(column => {
-                            const key = `${rowId}_${column.id}`;
-                            if (selectedMatrix.dependencies[key] && column.id < rowId) {
-                              count++;
-                            }
-                          });
-                          return count;
-                        };
-                        
-                        return Object.entries(rowsByCategory).map(([category, rows]) => (
-                          <Fragment key={category}>
-                            {rows.map((row, rowIndex) => (
-                              <tr key={row.id} className={row.id % 5 === 0 ? 'border-b-2 border-b-gray-500' : ''}>
-                                <td className="border border-gray-300 p-1 text-center">{row.id}</td>
-                                <td className="border border-gray-300 p-1 text-left">
-                                  {row.name}
-                                </td>
-                                {rowIndex === 0 ? (
-                                  <td 
-                                    className="border border-gray-300 p-1 text-center font-bold" 
-                                    rowSpan={rows.length}
-                                  >
-                                    {category}
-                                  </td>
-                                ) : null}
-                                <td className="border border-gray-300 p-1 text-center">
-                                  {calculateSubtotals(row.id)}
-                                </td>
-                                {selectedMatrix.columns.map((column) => {
-                                  const key = `${row.id}_${column.id}`;
-                                  const value = Boolean(selectedMatrix.dependencies[key]);
-                                  const isDisabled = row.id === column.id || row.id > column.id;
-                                  const isGreen = row.id > column.id;
-                                  
-                                  // Add a visual separator at the diagonal
-                                  const isDiagonal = row.id === column.id;
-                                  const isNearDiagonal = Math.abs(row.id - column.id) <= 1;
-                                  
-                                  return (
-                                    <td 
-                                      key={key} 
-                                      className={`border border-gray-300 p-0 text-center ${
-                                        isDisabled ? (isGreen ? 'bg-green-800' : 'bg-gray-200') : (value ? 'bg-green-800' : 'bg-white')
-                                      } ${
-                                        isDiagonal ? 'border-2 border-red-500' : ''
-                                      } ${
-                                        isNearDiagonal ? 'border-r border-r-red-300' : ''
-                                      } ${
-                                        column.id % 5 === 0 ? 'border-r-2 border-r-gray-500' : ''
-                                      }`}
-                                      style={{ width: '20px', height: '20px', maxWidth: '30px' }}
-                                    >
-                                      {value && !isDisabled ? 'x' : ''}
-                                    </td>
-                                  );
-                                })}
-                                <td className="border border-gray-300 p-1 text-center font-bold">
-                                  {rowTotals[row.id] || 0}
-                                </td>
-                                {rowIndex === 0 ? (
-                                  <td 
-                                    className="border border-gray-300 p-1 text-center font-bold" 
-                                    rowSpan={rows.length}
-                                  >
-                                    {categoryTotals[category] || 0}
-                                  </td>
-                                ) : null}
-                              </tr>
-                            ))}
-                          </Fragment>
-                        ));
-                      } catch (error) {
-                        console.error("Error rendering matrix:", error);
-                        return (
-                          <tr>
-                            <td colSpan={5 + selectedMatrix.columns.length} className="text-center text-red-500 p-4">
-                              Error rendering matrix. Please check console for details.
-                            </td>
-                          </tr>
-                        );
-                      }
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div className="w-[98vw] h-[98vh]">
+            <MatrixSnapshotViewer 
+              matrix={selectedMatrix} 
+              onClose={closeMatrixModal} 
+            />
           </div>
         </div>
       )}
