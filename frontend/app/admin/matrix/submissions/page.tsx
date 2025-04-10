@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../../components/auth/authContext';
 import AdminRoute from '../../../../components/auth/adminRoute';
 import { toast } from "react-toastify";
 import { format } from "date-fns";
@@ -153,6 +152,10 @@ export default function MatrixSubmissionsPage() {
     router.push(`/matrix/${matrixId}`);
   };
 
+  const viewMatrixHistory = (matrixId: string) => {
+    router.push(`/matrix/${matrixId}/history`);
+  };
+
   return (
     <AdminRoute>
       <main className="flex-grow container mx-auto p-4">
@@ -187,6 +190,7 @@ export default function MatrixSubmissionsPage() {
                     <th className="border border-gray-300 p-2">Matrix ID</th>
                     <th className="border border-gray-300 p-2">Details</th>
                     <th className="border border-gray-300 p-2">View Matrix</th>
+                    <th className="border border-gray-300 p-2">View History</th>
                     <th className="border border-gray-300 p-2">View Snapshot</th>
                     <th className="border border-gray-300 p-2">Actions</th>
                   </tr>
@@ -216,6 +220,16 @@ export default function MatrixSubmissionsPage() {
                         >
                           View Matrix
                         </button>
+                      </td>
+                      <td className="border border-gray-300 p-2 text-center">
+                        {entry.matrixId && (
+                          <button
+                            onClick={() => viewMatrixHistory(entry.matrixId)}
+                            className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-500"
+                          >
+                            History
+                          </button>
+                        )}
                       </td>
                       <td className="border border-gray-300 p-2 text-center">
                         {entry.matrixSnapshot && (
@@ -267,17 +281,23 @@ export default function MatrixSubmissionsPage() {
               </div>
               
               <div className="overflow-auto flex-grow">
-                <table className="border-collapse border border-gray-300 text-xs">
+                <table className="min-w-full border-collapse border border-gray-300 text-xs">
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="border border-gray-300 p-1 text-center sticky left-0 top-0 bg-gray-100 z-20 min-w-[40px]">ID</th>
                       <th className="border border-gray-300 p-1 text-left sticky left-[40px] top-0 bg-gray-100 z-20 min-w-[180px]">Sub-Attribute</th>
                       <th className="border border-gray-300 p-1 text-center sticky left-[220px] top-0 bg-gray-100 z-20 min-w-[100px]">Category</th>
+                      <th className="border border-gray-300 p-1 text-center sticky left-[320px] top-0 bg-gray-100 z-20">Relation To</th>
                       {selectedMatrix.columns.map((column) => (
-                        <th key={column.id} className="border border-gray-300 p-1 text-center sticky top-0 bg-gray-100 z-10 w-8">
+                        <th 
+                          key={column.id} 
+                          className="border border-gray-300 p-1 text-center sticky top-0 bg-gray-100 z-10"
+                        >
                           {column.id}
                         </th>
                       ))}
+                      <th className="border border-gray-300 p-1 text-center sticky top-0 right-0 bg-gray-100 z-20">Total</th>
+                      <th className="border border-gray-300 p-1 text-center sticky top-0 right-[80px] bg-gray-100 z-20">Category Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -292,6 +312,32 @@ export default function MatrixSubmissionsPage() {
                           acc[category].push(row);
                           return acc;
                         }, {} as Record<string, typeof selectedMatrix.rows>);
+                        
+                        // Calculate row totals
+                        const rowTotals: Record<number, number> = {};
+                        const categoryTotals: Record<string, number> = {};
+                        
+                        // Initialize totals
+                        selectedMatrix.rows.forEach(row => {
+                          rowTotals[row.id] = 0;
+                          if (!categoryTotals[row.category]) {
+                            categoryTotals[row.category] = 0;
+                          }
+                        });
+                        
+                        // Calculate totals
+                        Object.entries(selectedMatrix.dependencies).forEach(([key, value]) => {
+                          if (value) {
+                            const [rowId, colId] = key.split('_').map(Number);
+                            rowTotals[rowId] = (rowTotals[rowId] || 0) + 1;
+                            
+                            // Find the category for this row
+                            const row = selectedMatrix.rows.find(r => r.id === rowId);
+                            if (row) {
+                              categoryTotals[row.category] = (categoryTotals[row.category] || 0) + 1;
+                            }
+                          }
+                        });
                         
                         return Object.entries(rowsByCategory).map(([category, rows]) => (
                           <Fragment key={category}>
@@ -309,18 +355,20 @@ export default function MatrixSubmissionsPage() {
                                     {category}
                                   </td>
                                 ) : null}
+                                <td className="border border-gray-300 p-1 text-center sticky left-[320px] bg-white z-10">
+                                  {row.id === 1 ? '0' : ''}
+                                </td>
                                 {selectedMatrix.columns.map((column) => {
                                   const key = `${row.id}_${column.id}`;
                                   // Use Boolean conversion to handle undefined/null values
                                   const value = Boolean(selectedMatrix.dependencies[key]);
                                   const isDisabled = row.id === column.id || row.id > column.id;
-                                  const isGreen = row.id > column.id;
                                   
                                   return (
                                     <td 
                                       key={key} 
                                       className={`border border-gray-300 p-0 text-center ${
-                                        isDisabled ? (isGreen ? 'bg-green-800' : 'bg-gray-200') : (value ? 'bg-green-800' : 'bg-white')
+                                        isDisabled ? 'bg-gray-200' : (value ? 'bg-green-800' : 'bg-white')
                                       }`}
                                       style={{ width: '24px', height: '24px', minWidth: '24px' }}
                                     >
@@ -328,6 +376,17 @@ export default function MatrixSubmissionsPage() {
                                     </td>
                                   );
                                 })}
+                                <td className="border border-gray-300 p-1 text-center sticky right-0 bg-white z-10">
+                                  {rowTotals[row.id] || 0}
+                                </td>
+                                {rowIndex === 0 ? (
+                                  <td 
+                                    className="border border-gray-300 p-1 text-center font-bold sticky right-[80px] bg-white z-10" 
+                                    rowSpan={rows.length}
+                                  >
+                                    {categoryTotals[category] || 0}
+                                  </td>
+                                ) : null}
                               </tr>
                             ))}
                           </Fragment>
@@ -336,7 +395,7 @@ export default function MatrixSubmissionsPage() {
                         console.error("Error rendering matrix:", error);
                         return (
                           <tr>
-                            <td colSpan={3 + selectedMatrix.columns.length} className="text-center text-red-500 p-4">
+                            <td colSpan={5 + selectedMatrix.columns.length} className="text-center text-red-500 p-4">
                               Error rendering matrix. Please check console for details.
                             </td>
                           </tr>

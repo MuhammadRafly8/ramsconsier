@@ -16,6 +16,10 @@ export interface HistoryEntry {
   details?: string;
   matrixSnapshot?: string;
   adminOnly?: boolean;
+  user?: {
+    id: string;
+    username: string;
+  };
 }
 
 const historyService = {

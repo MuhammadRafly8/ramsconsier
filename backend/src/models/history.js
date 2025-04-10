@@ -4,7 +4,7 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class History extends Model {
     static associate(models) {
-      // define association here
+      // Define association here
       History.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
       History.belongsTo(models.Matrix, { foreignKey: 'matrixId', as: 'matrix' });
     }

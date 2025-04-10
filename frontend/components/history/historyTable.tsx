@@ -3,7 +3,28 @@
 import { useState, useEffect, Fragment } from "react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-import historyService, { HistoryEntry } from "../../services/historyService";
+import historyService from "../../services/historyService";
+
+interface HistoryEntry {
+  id?: string;
+  userId: string;
+  userRole: string;
+  timestamp: string;
+  action: string;
+  matrixId: string;
+  rowId?: number;
+  columnId?: number;
+  rowName?: string;
+  columnName?: string;
+  cellKey?: string;
+  details?: string;
+  matrixSnapshot?: string;
+  adminOnly?: boolean;
+  user?: {
+    id: string;
+    username: string;
+  };
+}
 
 interface StructuredMatrix {
   rows: { id: number; name: string; category: string }[];
@@ -11,11 +32,14 @@ interface StructuredMatrix {
   dependencies: Record<string, boolean>;
 }
 
+// Update the props interface to include viewMatrix
 interface HistoryTableProps {
-  matrixId?: string; // Optional matrixId to filter history for a specific matrix
+  matrixId?: string;
+  viewMatrix?: (matrixSnapshot: string) => void;
 }
 
-const HistoryTable = ({ matrixId }: HistoryTableProps) => {
+// Then in your component, make sure to use this prop
+export default function HistoryTable({ matrixId, viewMatrix: externalViewMatrix }: HistoryTableProps) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatrix, setSelectedMatrix] = useState<StructuredMatrix | null>(null);
@@ -58,7 +82,14 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
     fetchHistory();
   }, [matrixId]);
 
-  const viewMatrix = (matrixSnapshot: string) => {
+  const handleViewMatrix = (matrixSnapshot: string) => {
+    // If external viewMatrix function is provided, use it
+    if (externalViewMatrix) {
+      externalViewMatrix(matrixSnapshot);
+      return;
+    }
+    
+    // Otherwise use the local implementation
     try {
       console.log("Parsing matrix snapshot:", matrixSnapshot.substring(0, 100) + "...");
       const parsedData = JSON.parse(matrixSnapshot);
@@ -128,7 +159,6 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
     return <div className="p-8 text-center text-gray-500">No history data available</div>;
   }
 
-  // Rest of the component remains the same
   return (
     <>
       <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -151,7 +181,10 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
                 <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
                   {format(new Date(entry.timestamp), 'yyyy-MM-dd HH:mm:ss')}
                 </td>
-                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">{entry.userId}</td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {/* Display username if available, otherwise show userId */}
+                  {entry.user ? entry.user.username : entry.userId}
+                </td>
                 <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
                   <span className={`px-1 md:px-2 py-0.5 md:py-1 rounded-full text-xs ${
                     entry.userRole === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
@@ -168,9 +201,9 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {entry.action === 'add' ? 'Added dependency' : 
-                     entry.action === 'remove' ? 'Removed dependency' : 
-                     entry.action === 'submit_matrix' ? 'Submitted matrix' :
-                     'Edited matrix'}
+                    entry.action === 'remove' ? 'Removed dependency' : 
+                    entry.action === 'submit_matrix' ? 'Submitted matrix' :
+                    'Edited matrix'}
                   </span>
                 </td>
                 <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
@@ -187,10 +220,11 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
                     </>
                   )}
                 </td>
+                
                 <td className="border border-gray-300 p-1 md:p-2 text-center">
                   {entry.matrixSnapshot && (
                     <button
-                      onClick={() => entry.matrixSnapshot ? viewMatrix(entry.matrixSnapshot) : null}
+                      onClick={() => entry.matrixSnapshot ? handleViewMatrix(entry.matrixSnapshot) : null}
                       className="px-2 py-0.5 md:px-3 md:py-1 bg-green-600 text-white text-xs rounded hover:bg-green-500"
                     >
                       View
@@ -214,9 +248,14 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
       {/* Matrix Modal */}
       {showMatrixModal && selectedMatrix && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Matrix Snapshot</h3>
+          <div className="bg-white rounded-lg p-4 w-[98vw] h-[98vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-xl font-bold">
+                Matrix Snapshot 
+                <span className="text-sm ml-2 text-gray-600">
+                  ({selectedMatrix.rows.length} sub-attributes × {selectedMatrix.columns.length} columns)
+                </span>
+              </h3>
               <button 
                 onClick={closeMatrixModal}
                 className="text-gray-500 hover:text-gray-700"
@@ -225,69 +264,151 @@ const HistoryTable = ({ matrixId }: HistoryTableProps) => {
               </button>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-300 p-2 text-center">ID</th>
-                    <th className="border border-gray-300 p-2 text-left">Sub-Attribute</th>
-                    <th className="border border-gray-300 p-2 text-center">Category</th>
-                    {selectedMatrix.columns.map((column) => (
-                      <th key={column.id} className="border border-gray-300 p-2 text-center">
-                        {column.id}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(selectedMatrix.rows.reduce((acc, row) => {
-                    if (!acc[row.category]) {
-                      acc[row.category] = [];
-                    }
-                    acc[row.category].push(row);
-                    return acc;
-                  }, {} as Record<string, typeof selectedMatrix.rows>)).map(([category, rows], categoryIndex) => (
-                    <Fragment key={category}>
-                      {rows.map((row, rowIndex) => (
-                        <tr key={row.id}>
-                          <td className="border border-gray-300 p-2 text-center">{row.id}</td>
-                          <td className="border border-gray-300 p-2 text-left">
-                            {row.name}
-                          </td>
-                          {rowIndex === 0 ? (
-                            <td 
-                              className="border border-gray-300 p-2 text-center font-bold" 
-                              rowSpan={rows.length}
-                            >
-                              {category}
-                            </td>
-                          ) : null}
-                          {selectedMatrix.columns.map((column) => {
-                            const key = `${row.id}_${column.id}`;
-                            const value = selectedMatrix.dependencies[key] || false;
-                            return (
-                              <td 
-                                key={key} 
-                                className={`border border-gray-300 p-2 text-center ${
-                                  value ? 'bg-green-800 text-white' : 'bg-white'
-                                }`}
-                              >
-                                {value ? 'x' : ''}
-                              </td>
-                            );
-                          })}
-                        </tr>
+            <div className="mb-2 text-xs text-gray-600">
+              <p>This is a snapshot of the matrix at the time of submission.</p>
+            </div>
+            
+            <div className="overflow-auto flex-grow">
+              <div className="min-w-max">
+                <table className="min-w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 p-1 text-center">ID</th>
+                      <th className="border border-gray-300 p-1 text-left">Sub-Attribute</th>
+                      <th className="border border-gray-300 p-1 text-center">Category</th>
+                      <th className="border border-gray-300 p-1 text-center">Relation To</th>
+                      {selectedMatrix.columns.map((column) => (
+                        <th 
+                          key={column.id} 
+                          className={`border border-gray-300 p-1 text-center ${
+                            column.id % 5 === 0 ? 'border-r border-r-gray-300' : ''
+                          }`}
+                        >
+                          {column.id}
+                        </th>
                       ))}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
+                      <th className="border border-gray-300 p-1 text-center">Total</th>
+                      <th className="border border-gray-300 p-1 text-center">Category Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      try {
+                        // Group rows by category
+                        const rowsByCategory = selectedMatrix.rows.reduce((acc, row) => {
+                          const category = row.category || 'Uncategorized';
+                          if (!acc[category]) {
+                            acc[category] = [];
+                          }
+                          acc[category].push(row);
+                          return acc;
+                        }, {} as Record<string, typeof selectedMatrix.rows>);
+                        
+                        // Calculate row totals
+                        const rowTotals: Record<number, number> = {};
+                        selectedMatrix.rows.forEach(row => {
+                          rowTotals[row.id] = 0;
+                        });
+                        
+                        Object.entries(selectedMatrix.dependencies).forEach(([key, value]) => {
+                          if (value) {
+                            const [rowId] = key.split('_').map(Number);
+                            rowTotals[rowId] = (rowTotals[rowId] || 0) + 1;
+                          }
+                        });
+                        
+                        // Calculate category totals
+                        const categoryTotals: Record<string, number> = {};
+                        Object.entries(rowsByCategory).forEach(([category, rows]) => {
+                          categoryTotals[category] = rows.reduce((sum, row) => sum + (rowTotals[row.id] || 0), 0);
+                        });
+                        
+                        // Calculate subtotals for each row
+                        const calculateSubtotals = (rowId: number) => {
+                          let count = 0;
+                          selectedMatrix.columns.forEach(column => {
+                            const key = `${rowId}_${column.id}`;
+                            if (selectedMatrix.dependencies[key] && column.id < rowId) {
+                              count++;
+                            }
+                          });
+                          return count;
+                        };
+                        
+                        return Object.entries(rowsByCategory).map(([category, rows]) => (
+                          <Fragment key={category}>
+                            {rows.map((row, rowIndex) => (
+                              <tr key={row.id} className={`hover:bg-gray-50 ${
+                                row.id % 5 === 0 ? 'border-b border-b-gray-300' : 'border-b border-b-gray-300'
+                              }`}>
+                                <td className="border border-gray-300 p-1 text-center">{row.id}</td>
+                                <td className="border border-gray-300 p-1 text-left">
+                                  {row.name}
+                                </td>
+                                {rowIndex === 0 ? (
+                                  <td 
+                                    className="border border-gray-300 p-1 text-center font-bold" 
+                                    rowSpan={rows.length}
+                                  >
+                                    {category}
+                                  </td>
+                                ) : null}
+                                <td className="border border-gray-300 p-1 text-center">
+                                  {calculateSubtotals(row.id)}
+                                </td>
+                                {selectedMatrix.columns.map((column) => {
+                                  const key = `${row.id}_${column.id}`;
+                                  const value = Boolean(selectedMatrix.dependencies[key]);
+                                  const isDisabled = row.id === column.id || row.id > column.id;
+                                  const isGreen = row.id > column.id;
+                                  
+                                  return (
+                                    <td 
+                                      key={key} 
+                                      className={`border border-gray-300 p-0 text-center ${
+                                        isDisabled ? (isGreen ? 'bg-green-800' : 'bg-gray-200') : (value ? 'bg-green-800' : 'bg-white')
+                                      } ${
+                                        column.id % 5 === 0 ? 'border-r border-r-gray-400' : ''
+                                      }`}
+                                      style={{ width: '20px', height: '20px', maxWidth: '30px' }}
+                                    >
+                                      {value && !isDisabled ? 'x' : ''}
+                                    </td>
+                                  );
+                                })}
+                                <td className="border border-gray-300 p-1 text-center font-bold">
+                                  {rowTotals[row.id] || 0}
+                                </td>
+                                {rowIndex === 0 ? (
+                                  <td 
+                                    className="border border-gray-300 p-1 text-center font-bold" 
+                                    rowSpan={rows.length}
+                                  >
+                                    {categoryTotals[category] || 0}
+                                  </td>
+                                ) : null}
+                              </tr>
+                            ))}
+                          </Fragment>
+                        ));
+                      } catch (error) {
+                        console.error("Error rendering matrix:", error);
+                        return (
+                          <tr>
+                            <td colSpan={5 + selectedMatrix.columns.length} className="text-center text-red-500 p-4">
+                              Error rendering matrix. Please check console for details.
+                            </td>
+                          </tr>
+                        );
+                      }
+                    })()}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       )}
     </>
   );
-};
-
-export default HistoryTable;
+}
