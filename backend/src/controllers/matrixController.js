@@ -221,7 +221,95 @@ async function verifyMatrixAccess(req, res) {
   }
 }
 
-// Make sure to export the function
+// Add this new function for column averages
+async function getMatrixColumnAverages(req, res) {
+  try {
+    const { matrixId } = req.params;
+    
+    // Find the matrix
+    const matrix = await Matrix.findByPk(matrixId);
+    if (!matrix) {
+      return res.status(404).json({ error: 'Matrix not found' });
+    }
+    
+    // Get all history entries for this matrix that have matrix snapshots
+    const historyEntries = await History.findAll({
+      where: {
+        matrixId: matrixId,
+        matrixSnapshot: {
+          [Op.not]: null
+        }
+      }
+    });
+    
+    if (historyEntries.length === 0) {
+      return res.status(200).json({ 
+        message: 'No history data available for this matrix',
+        averages: [] 
+      });
+    }
+    
+    // Process each snapshot to calculate column averages
+    const columnCounts = {};
+    const columnTotals = {};
+    
+    for (const entry of historyEntries) {
+      try {
+        const snapshot = JSON.parse(entry.matrixSnapshot);
+        let matrixData;
+        
+        // Handle different matrix data structures
+        if (snapshot.data && snapshot.data.dependencies) {
+          matrixData = snapshot.data;
+        } else if (snapshot.dependencies) {
+          matrixData = snapshot;
+        } else {
+          continue; // Skip invalid snapshots
+        }
+        
+        // Count dependencies for each column
+        for (const [key, value] of Object.entries(matrixData.dependencies)) {
+          if (value) {
+            const [rowId, colId] = key.split('_').map(Number);
+            
+            if (!columnCounts[colId]) {
+              columnCounts[colId] = 0;
+              columnTotals[colId] = 0;
+            }
+            
+            columnCounts[colId]++;
+            columnTotals[colId]++;
+          }
+        }
+      } catch (error) {
+        console.error('Error processing matrix snapshot:', error);
+        // Continue with next entry
+      }
+    }
+    
+    // Calculate averages
+    const averages = [];
+    const currentMatrix = matrix.data;
+    
+    // Make sure we have column information
+    if (currentMatrix && currentMatrix.columns) {
+      for (const column of currentMatrix.columns) {
+        averages.push({
+          id: column.id,
+          name: column.name,
+          average: columnCounts[column.id] ? 
+            columnTotals[column.id] / historyEntries.length : 0
+        });
+      }
+    }
+    
+    return res.status(200).json({ averages });
+  } catch (error) {
+    console.error('Error calculating column averages:', error);
+    return res.status(500).json({ error: 'Failed to calculate column averages' });
+  }
+}
+
 module.exports = {
   getAllMatrices,
   getUserMatrices,
@@ -229,5 +317,6 @@ module.exports = {
   createMatrix,
   updateMatrix,
   deleteMatrix,
-  verifyMatrixAccess  // Add this line to export the new function
+  verifyMatrixAccess,
+  getMatrixColumnAverages 
 };

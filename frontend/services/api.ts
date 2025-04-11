@@ -99,6 +99,17 @@ const matrixService = {
       console.error('Error verifying matrix access:', error);
       throw error;
     }
+  },
+  
+  // Add the matrix column averages function
+  getMatrixColumnAverages: async (matrixId: string) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/matrix/${matrixId}/column-averages`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching matrix column averages:', error);
+      throw error;
+    }
   }
 };
 
