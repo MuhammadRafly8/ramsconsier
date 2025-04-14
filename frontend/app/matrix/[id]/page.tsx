@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { MatrixItem, StructuredMatrix } from "../../../types/matrix";
+import Link from "next/link";
 import { useAuth } from "../../../components/auth/authContext";
-import { matrixService, historyService } from "../../../services/api";
-import Link from 'next/link';
+import { MatrixItem, StructuredMatrix } from "../../../types/matrix";
+import { matrixService } from "../../../services/api";
+import historyService from "../../../services/historyService";
+import ShareMatrix from "../../../components/matrix/shareMatrix";
 
 export default function MatrixDetailPage() {
   // Existing state variables
@@ -153,7 +155,6 @@ export default function MatrixDetailPage() {
       }
     }
   };
-
   const calculateTotals = (data: StructuredMatrix) => {
     const rowTotals: Record<number, number> = {};
     const columnTotals: Record<number, number> = {};
@@ -309,6 +310,7 @@ export default function MatrixDetailPage() {
   }, {} as Record<string, typeof matrix.data.rows>);
 
   return (
+    
     <main className="flex-grow container mx-auto p-4">
       {showKeywordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -557,18 +559,21 @@ export default function MatrixDetailPage() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">{matrix.title}</h2>
+         
           <div className="flex space-x-2">
             {!isAdmin() && (
-              <button
-                onClick={() => setShowSubmitModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                disabled={!isAuthorized}
-              >
-                Submit Matrix
-              </button>
+              <>
+                <ShareMatrix 
+                  matrixId={matrixId} 
+                  buttonText="Bagikan" 
+                  className="bg-green-600 hover:bg-green-700" 
+                />
+
+              </>
             )}
             {isAdmin() && (
               <>
+                <ShareMatrix matrixId={matrixId} />
                 <button
                   onClick={() => setShowSubmitModal(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
