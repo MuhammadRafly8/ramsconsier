@@ -100,9 +100,7 @@ async function createMatrix(req, res) {
   }
 }
 
-// Remove this duplicate import
-// const { User, History } = require('../models');
-// const Matrix = require('../models/matrix');
+
 
 // Update matrix
 async function updateMatrix(req, res) {
@@ -169,7 +167,7 @@ async function deleteMatrix(req, res) {
   }
 }
 
-// Add this function to your matrixController.js file
+
 
 // Verify matrix access with keyword
 async function verifyMatrixAccess(req, res) {
