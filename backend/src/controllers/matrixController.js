@@ -154,12 +154,18 @@ async function deleteMatrix(req, res) {
       return res.status(403).json({ error: 'Not authorized to delete this matrix' });
     }
     
+    // First delete related history entries to avoid foreign key constraint errors
+    await History.destroy({
+      where: { matrixId: id }
+    });
+    
+    // Then delete the matrix
     await matrix.destroy();
     
     return res.status(200).json({ message: 'Matrix deleted successfully' });
   } catch (error) {
     console.error('Error deleting matrix:', error);
-    return res.status(500).json({ error: 'Failed to delete matrix' });
+    return res.status(500).json({ error: 'Failed to delete matrix', details: error.message });
   }
 }
 
